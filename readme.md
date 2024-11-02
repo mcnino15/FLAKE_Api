@@ -33,7 +33,7 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente:
 ## Configuración
 1. **Setea las variables de entorno**
     ```
-    setx DB_PASSWORD ""
+    setx DB_PASSWORD "PASSWORD"
     ```
 
 2. **Realiza las migraciones de la base de datos:**
