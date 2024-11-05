@@ -21,7 +21,7 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente:
 
     ```bash
     python -m venv .venv
-    source venv/scripts/activate  # En Windows usa `venv\Scripts\activate`
+    source .venv/scripts/activate  # En Windows usa `venv\Scripts\activate`
     ```
 
 3. **Instala las dependencias:**
@@ -54,7 +54,10 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente:
 
     Abre tu navegador y ve a `http://127.0.0.1:8000`.
 
+## Reiniciar db
 
-
-
+```
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+```
 
