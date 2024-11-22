@@ -201,6 +201,8 @@ class TutorViewSet(viewsets.ModelViewSet):
             else:
                 return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        request.data['persona'] = instance.persona.id
+
         tutor_serializer = self.get_serializer(instance, data=request.data, partial=partial)
         if tutor_serializer.is_valid():
             tutor_serializer.save()
@@ -579,4 +581,3 @@ class AsistenciaTutorViewSet(viewsets.ModelViewSet):
         )
         serializer = TutorAsistenciaSerializer(asistencia_obj)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
