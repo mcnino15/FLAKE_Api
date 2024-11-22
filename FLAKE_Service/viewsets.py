@@ -88,7 +88,7 @@ class TutorViewSet(viewsets.ModelViewSet):
         
         if self.action == 'create' or self.action == 'creartutor':
             return TutorCreateSerializer
-        elif self.action == 'retrieve' or self.action == 'get_tutor_por_persona':
+        elif self.action in ['retrieve', 'get_tutor_por_persona', 'update', 'partial_update']:
             return TutorDetailSerializer
         return TutorCreateSerializer
 
@@ -183,6 +183,40 @@ class TutorViewSet(viewsets.ModelViewSet):
         tutores = Tutor.objects.all()
         serializer = TutorDetailSerializer(tutores, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    @swagger_auto_schema(
+        request_body=TutorDetailSerializer,
+        responses={200: TutorDetailSerializer, 400: 'Bad Request'}
+    )
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        persona_data = request.data.pop('persona', None)
+        if persona_data:
+            persona_serializer = PersonaSerializer(instance.persona, data=persona_data, partial=partial)
+            if persona_serializer.is_valid():
+                persona_serializer.save()
+            else:
+                return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        tutor_serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if tutor_serializer.is_valid():
+            tutor_serializer.save()
+            return Response(tutor_serializer.data)
+        return Response(tutor_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        request_body=TutorDetailSerializer,
+        responses={200: TutorDetailSerializer, 400: 'Bad Request'}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+
+
 
 
 
