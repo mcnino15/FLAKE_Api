@@ -177,7 +177,13 @@ class TutorViewSet(viewsets.ModelViewSet):
         except Tutor.DoesNotExist:
             return Response({"error": "Estudiante no encontrado"}, status=status.HTTP_404_NOT_FOUND)
         
-    
+
+    @action(detail=False, methods=['get'], url_path='listar-tutores')
+    def listar_tutores(self, request):
+        tutores = Tutor.objects.all()
+        serializer = TutorDetailSerializer(tutores, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class EstudianteViewSet(viewsets.ModelViewSet):
