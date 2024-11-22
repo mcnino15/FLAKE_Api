@@ -19,7 +19,7 @@ class TutorCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TutorDetailSerializer(serializers.ModelSerializer):
-    persona = PersonaSerializer()
+    persona = PersonaSerializer(read_only=True)
 
     class Meta:
         model = Tutor
