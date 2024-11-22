@@ -36,7 +36,7 @@ class Persona(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
 
   
-    groups = models.ManyToManyField(
+    groups = models.ManyToManyField(    
         'auth.Group',
         related_name='persona_set',
         blank=True,
@@ -155,6 +155,8 @@ class asistencia(models.Model):
     fechaclase = models.DateField()
     tutor=models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True)
     estudiante=models.ForeignKey(Estudiante, on_delete=models.SET_NULL, null=True)
+    aula = models.ForeignKey(Aula, on_delete=models.SET_NULL, null=True, blank=True)
+    
     def __str__(self):
         return f"{self.estudiante} - {self.fechaclase} - {self.get_estado_display()}"
 
