@@ -97,72 +97,79 @@ class TutorViewSet(viewsets.ModelViewSet):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'cedula': openapi.Schema(type=openapi.TYPE_STRING, description='Cédula'),
-                'primer_nombre': openapi.Schema(type=openapi.TYPE_STRING, description='Primer nombre'),
-                'segundo_nombre': openapi.Schema(type=openapi.TYPE_STRING, description='Segundo nombre'),
-                'primer_apellido': openapi.Schema(type=openapi.TYPE_STRING, description='Primer apellido'),
-                'segundo_apellido': openapi.Schema(type=openapi.TYPE_STRING, description='Segundo apellido'),
-                'genero': openapi.Schema(type=openapi.TYPE_STRING, description='Género'),
-                'fecha_nacimiento': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Fecha de nacimiento'),
-                'estrato': openapi.Schema(type=openapi.TYPE_STRING, description='Estrato'),
+                'persona': openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'password': openapi.Schema(type=openapi.TYPE_STRING, description='Contraseña'),
+                        'last_login': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Último inicio de sesión'),
+                        'is_superuser': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Es superusuario'),
+                        'cedula': openapi.Schema(type=openapi.TYPE_STRING, description='Cédula'),
+                        'primer_nombre': openapi.Schema(type=openapi.TYPE_STRING, description='Primer nombre'),
+                        'segundo_nombre': openapi.Schema(type=openapi.TYPE_STRING, description='Segundo nombre'),
+                        'primer_apellido': openapi.Schema(type=openapi.TYPE_STRING, description='Primer apellido'),
+                        'segundo_apellido': openapi.Schema(type=openapi.TYPE_STRING, description='Segundo apellido'),
+                        'genero': openapi.Schema(type=openapi.TYPE_STRING, description='Género'),
+                        'fecha_nacimiento': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Fecha de nacimiento'),
+                        'estrato': openapi.Schema(type=openapi.TYPE_STRING, description='Estrato'),
+                        'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Está activo'),
+                        'is_staff': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Es miembro del staff'),
+                        'groups': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='Grupos'),
+                        'user_permissions': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_INTEGER), description='Permisos de usuario'),
+                    },
+                    required=[
+                        'password', 'cedula', 'primer_nombre', 'primer_apellido',
+                        'genero', 'fecha_nacimiento', 'estrato'
+                    ],
+                ),
+                'telefono': openapi.Schema(type=openapi.TYPE_STRING, description='Teléfono'),
                 'correo': openapi.Schema(type=openapi.TYPE_STRING, description='Correo electrónico'),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Contraseña'),
+                'direccion': openapi.Schema(type=openapi.TYPE_STRING, description='Dirección'),
                 'instituciones': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID de la institución'),
                 'aula': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del aula'),
-                'telefono': openapi.Schema(type=openapi.TYPE_STRING, description='Teléfono'),
-                'direccion': openapi.Schema(type=openapi.TYPE_STRING, description='Dirección'),
             },
-            required=['primer_nombre', 'primer_apellido', 'genero', 'fecha_nacimiento', 'estrato', 'correo', 'cedula', 'instituciones', 'aula','telefono','direccion'],
+            required=['persona', 'telefono', 'correo', 'direccion', 'instituciones', 'aula'],
         ),
         responses={201: TutorDetailSerializer, 400: 'Bad Request'}
     )
     @action(detail=False, methods=['post'], url_path='creartutor')
     def crear_tutor(self, request):
-        # Lógica de creación del tutor
-        persona_data = {
-            "cedula": request.data.get("cedula"),
-            "primer_nombre": request.data.get("primer_nombre"),
-            "segundo_nombre": request.data.get("segundo_nombre"),
-            "primer_apellido": request.data.get("primer_apellido"),
-            "segundo_apellido": request.data.get("segundo_apellido"),
-            "genero": request.data.get("genero"),
-            "fecha_nacimiento": request.data.get("fecha_nacimiento"),
-            "estrato": request.data.get("estrato"),
-            "correo": request.data.get("correo"),
-            "password": request.data.get("password"),
-        }
+        # Extraer los datos de 'persona' del request
+        persona_data = request.data.get('persona')
+        if not persona_data:
+            return Response({'persona': ['Este campo es requerido.']}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Remover campos innecesarios de persona_data
+        campos_no_requeridos = ['id', 'last_login', 'is_superuser', 'is_active', 'is_staff', 'groups', 'user_permissions']
+        for campo in campos_no_requeridos:
+            persona_data.pop(campo, None)
+        
+        # Crear instancia de Persona
         persona_serializer = PersonaSerializer(data=persona_data)
         if persona_serializer.is_valid():
             persona = persona_serializer.save()
             persona.set_password(persona_data['password'])
+            persona.save()
         else:
             return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Validación para los campos 'telefono' y 'direccion'
-        telefono = request.data.get("telefono")
-        direccion = request.data.get("direccion")
         
-        if not telefono or not direccion:
-            return Response({"error": "Telefono y direccion son requeridos."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Datos del tutor
+        # Preparar datos para Tutor
         tutor_data = {
-            "telefono": telefono,
-            "direccion": direccion,
-            "persona": persona.id,
-            "correo": request.data.get("correo"),
-            "instituciones": request.data.get("instituciones"),  # Asegúrate de pasar solo el ID
-            "aula": request.data.get("aula"),
-            
+            'telefono': request.data.get('telefono'),
+            'correo': request.data.get('correo'),
+            'direccion': request.data.get('direccion'),
+            'persona': persona.id,
+            'instituciones': request.data.get('instituciones'),
+            'aula': request.data.get('aula'),
         }
-
-        tutor_serializer = TutorCreateSerializer(data=tutor_data)
+        
+        # Crear instancia de Tutor
+        tutor_serializer = TutorDetailSerializer(data=tutor_data)
         if tutor_serializer.is_valid():
             tutor_serializer.save()
             return Response(tutor_serializer.data, status=status.HTTP_201_CREATED)
         else:
-            persona.delete()  # Rollback persona creation if tutor creation fails
+            # Eliminar la persona creada si el tutor no es válido
+            persona.delete()
             return Response(tutor_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
     @action(detail=True, methods=['get'], url_path='detalle')
