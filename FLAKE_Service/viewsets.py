@@ -488,6 +488,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
+                'tutor_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del tutor'),
                 'aula_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del aula'),
                 'fechaclase': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Fecha de la clase'),
                 'asistencias': openapi.Schema(
@@ -503,15 +504,28 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                     description='Lista de asistencias de estudiantes'
                 )
             },
-            required=['aula_id', 'fechaclase', 'asistencias']
+            required=['tutor_id', 'aula_id', 'fechaclase', 'asistencias']
         ),
         responses={200: 'Asistencias registradas exitosamente', 400: 'Bad Request'}
     )
     @action(detail=False, methods=['post'], url_path='tomar-asistencia')
     def tomar_asistencia(self, request):
+        tutor_id = request.data.get('tutor_id')
         aula_id = request.data.get('aula_id')
         fechaclase = request.data.get('fechaclase')
         asistencias_data = request.data.get('asistencias', [])
+
+        # Obtener la instancia de Aula
+        try:
+            aula = Aula.objects.get(idaula=aula_id)
+        except Aula.DoesNotExist:
+            return Response({'error': 'Aula no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Obtener la instancia de Tutor
+        try:
+            tutor = Tutor.objects.get(idtutor=tutor_id)
+        except Tutor.DoesNotExist:
+            return Response({'error': 'Tutor no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Procesar las asistencias
         errores = []
@@ -519,17 +533,19 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             estudiante_id = asistencia_item.get('estudiante_id')
             estado = asistencia_item.get('estado', ' ')
 
-            # Asumimos que el estudiante ya pertenece al aula
+            # Obtener la instancia de Estudiante
             try:
-                estudiante = Estudiante.objects.get(id=estudiante_id)
+                estudiante = Estudiante.objects.get(idestudiante=estudiante_id)
             except Estudiante.DoesNotExist:
-                errores.append({'estudiante_id': estudiante_id, 'error': 'Estudiante no encontrado.'})
+                errores.append({'estudiante': estudiante_id, 'error': 'Estudiante no encontrado.'})
                 continue
 
             # Registrar o actualizar la asistencia
             asistencia_obj, created = asistencia.objects.update_or_create(
                 estudiante=estudiante,
                 fechaclase=fechaclase,
+                aula=aula,
+                tutor=tutor,
                 defaults={
                     'estado': estado,
                 }
@@ -540,6 +556,7 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
             return Response({'errores': errores}, status=status.HTTP_207_MULTI_STATUS)
 
         return Response({'mensaje': 'Asistencias registradas exitosamente.'}, status=status.HTTP_200_OK)
+
   
 class AsistenciaTutorViewSet(viewsets.ModelViewSet):
     queryset = asistencia.objects.all()
