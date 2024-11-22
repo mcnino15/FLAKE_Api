@@ -12,17 +12,35 @@ class PersonaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Persona
         fields = '__all__'
-class TutorSerializer(serializers.ModelSerializer):
-    persona = PersonaSerializer()
+class TutorCreateSerializer(serializers.ModelSerializer):
+    persona = serializers.PrimaryKeyRelatedField(queryset=Persona.objects.all())
     class Meta:
         model = Tutor
         fields = '__all__'
 
-class EstudianteSerializer(serializers.ModelSerializer):
+class TutorDetailSerializer(serializers.ModelSerializer):
     persona = PersonaSerializer()
+
+    class Meta:
+        model = Tutor
+        fields = '__all__'
+        
+class EstudianteCreateSerializer(serializers.ModelSerializer):
+    persona = serializers.PrimaryKeyRelatedField(queryset=Persona.objects.all())
+
     class Meta:
         model = Estudiante
-        fields=  '__all__'
+        fields = '__all__'
+
+class EstudianteDetailSerializer(serializers.ModelSerializer):
+    persona = PersonaSerializer()
+
+    class Meta:
+        model = Estudiante
+        fields = '__all__'
+
+
+
 
 class LoginSerializer(serializers.Serializer):
     cedula = serializers.CharField()

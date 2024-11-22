@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas
-from .serializers import AdminSerializer, PersonaSerializer, TutorSerializer, EstudianteSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
+from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
@@ -84,26 +84,13 @@ class AdminViewSet(viewsets.ModelViewSet):
         
 class TutorViewSet(viewsets.ModelViewSet):
     queryset = Tutor.objects.all()
-    serializer_class = TutorSerializer
-
-    @swagger_auto_schema(
-        method='get',
-        responses={200: PersonaSerializer, 404: 'Tutor no encontrado'}
-    )
-    @action(detail=False, methods=['get'], url_path='get-tutor-por-cedula')
-    def obtener_tutor_por_cedula(self, request):
-        cedula = request.query_params.get('cedula')
-        if not cedula:
-            return Response({"error": "La cédula es un campo obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Buscar al tutor usando la cédula proporcionada
-            tutor = Tutor.objects.get(persona__cedula=cedula)
-            persona = tutor.persona  # Obtener la persona asociada al tutor
-            serializer = TutorSerializer(tutor)  # Serializar los datos de la persona
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Tutor.DoesNotExist:
-            return Response({"error": "Tutor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    def get_serializer_class(self):
+        
+        if self.action == 'create' or self.action == 'creartutor':
+            return TutorCreateSerializer
+        elif self.action == 'retrieve' or self.action == 'get_tutor_por_persona':
+            return TutorDetailSerializer
+        return TutorCreateSerializer
 
     @swagger_auto_schema(
         method='post',
@@ -125,11 +112,11 @@ class TutorViewSet(viewsets.ModelViewSet):
                 'telefono': openapi.Schema(type=openapi.TYPE_STRING, description='Teléfono'),
                 'direccion': openapi.Schema(type=openapi.TYPE_STRING, description='Dirección'),
             },
-            required=['cedula', 'primer_nombre', 'primer_apellido', 'genero', 'fecha_nacimiento', 'estrato', 'correo', 'instituciones', 'aula', 'password', 'telefono', 'direccion'],
+            required=['primer_nombre', 'primer_apellido', 'genero', 'fecha_nacimiento', 'estrato', 'correo', 'cedula', 'instituciones', 'aula','telefono','direccion'],
         ),
-        responses={201: TutorSerializer, 400: 'Bad Request'}
+        responses={201: TutorDetailSerializer, 400: 'Bad Request'}
     )
-    @action(detail=False, methods=['post'], url_path='crear-tutor')
+    @action(detail=False, methods=['post'], url_path='creartutor')
     def crear_tutor(self, request):
         # Lógica de creación del tutor
         persona_data = {
@@ -148,6 +135,7 @@ class TutorViewSet(viewsets.ModelViewSet):
         persona_serializer = PersonaSerializer(data=persona_data)
         if persona_serializer.is_valid():
             persona = persona_serializer.save()
+            persona.set_password(persona_data['password'])
         else:
             return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -169,7 +157,7 @@ class TutorViewSet(viewsets.ModelViewSet):
             
         }
 
-        tutor_serializer = TutorSerializer(data=tutor_data)
+        tutor_serializer = TutorCreateSerializer(data=tutor_data)
         if tutor_serializer.is_valid():
             tutor_serializer.save()
             return Response(tutor_serializer.data, status=status.HTTP_201_CREATED)
@@ -177,30 +165,30 @@ class TutorViewSet(viewsets.ModelViewSet):
             persona.delete()  # Rollback persona creation if tutor creation fails
             return Response(tutor_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
+    @action(detail=True, methods=['get'], url_path='detalle')
+    def get_tutor_por_persona(self, request, pk=None):
+        try:
+            persona = Persona.objects.get(pk=pk)
+            tutor = Tutor.objects.get(persona=persona)
+            serializer = TutorDetailSerializer(tutor)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Persona.DoesNotExist:
+            return Response({"error": "Persona no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        except Tutor.DoesNotExist:
+            return Response({"error": "Estudiante no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        
     
+
 
 class EstudianteViewSet(viewsets.ModelViewSet):
     queryset = Estudiante.objects.all()
-    serializer_class = EstudianteSerializer
-    
-    @swagger_auto_schema(
-        method='get',
-        responses={200: PersonaSerializer, 404: 'Estudiante no encontrado'}
-    )
-    @action(detail=False, methods=['get'], url_path='get-estudiante-por-cedula')
-    def obtener_estudiante_por_cedula(self, request):
-        cedula = request.query_params.get('cedula')
-        if not cedula:
-            return Response({"error": "La cédula es un campo obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            # Buscar al estudiante usando la cédula proporcionada
-            estudiante = Estudiante.objects.get(persona__cedula=cedula)
-            persona = estudiante.persona  # Obtener la persona asociada al estudiante
-            serializer = EstudianteSerializer(estudiante)  # Serializar los datos de la persona
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Estudiante.DoesNotExist:
-            return Response({"error": "Estudiante no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    def get_serializer_class(self):
+        if self.action == 'create' or self.action == 'crearestudiante':
+            return EstudianteCreateSerializer
+        elif self.action == 'retrieve' or self.action == 'get_estudiante_por_persona':
+            return EstudianteDetailSerializer
+        return EstudianteCreateSerializer
 
     @swagger_auto_schema(
         method='post',
@@ -222,11 +210,10 @@ class EstudianteViewSet(viewsets.ModelViewSet):
             },
             required=['primer_nombre', 'primer_apellido', 'genero', 'fecha_nacimiento', 'estrato', 'correo', 'cedula', 'instituciones', 'aula'],
         ),
-        responses={201: EstudianteSerializer, 400: 'Bad Request'}
+        responses={201: EstudianteDetailSerializer, 400: 'Bad Request'}
     )
-    @action(detail=False, methods=['post'], url_path='crear-estudiante')
+    @action(detail=False, methods=['post'], url_path='crearestudiante')
     def crear_estudiante(self, request):
-        # Datos de la persona
         persona_data = {
             "cedula": request.data.get("cedula"),
             "primer_nombre": request.data.get("primer_nombre"),
@@ -247,21 +234,34 @@ class EstudianteViewSet(viewsets.ModelViewSet):
         else:
             return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Datos del estudiante
         estudiante_data = {
             "persona": persona.id,
-            "correo": request.data.get("correo"),
             "instituciones": request.data.get("instituciones"),
             "aula": request.data.get("aula"),
         }
 
-        estudiante_serializer = EstudianteSerializer(data=estudiante_data)
+        estudiante_serializer = EstudianteCreateSerializer(data=estudiante_data)
         if estudiante_serializer.is_valid():
             estudiante_serializer.save()
             return Response(estudiante_serializer.data, status=status.HTTP_201_CREATED)
         else:
-            persona.delete()  # Rollback persona creation if estudiante creation fails
+            persona.delete()
             return Response(estudiante_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'], url_path='detalle')
+    def get_estudiante_por_persona(self, request, pk=None):
+        try:
+            persona = Persona.objects.get(pk=pk)
+            estudiante = Estudiante.objects.get(persona=persona)
+            serializer = EstudianteDetailSerializer(estudiante)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Persona.DoesNotExist:
+            return Response({"error": "Persona no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        except Estudiante.DoesNotExist:
+            return Response({"error": "Estudiante no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
 
 
 class NotasViewSet(viewsets.ModelViewSet):
