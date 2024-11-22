@@ -304,6 +304,20 @@ class EstudianteViewSet(viewsets.ModelViewSet):
 
 
 
+    @action(detail=False, methods=['get'], url_path='por-aula/(?P<aula_id>[^/.]+)')
+    def estudiantes_por_aula(self, request, aula_id=None):
+        try:
+            aula = Aula.objects.get(pk=aula_id)
+        except Aula.DoesNotExist:
+            return Response({"error": "Aula no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        
+        estudiantes = Estudiante.objects.filter(aula=aula)
+        serializer = EstudianteDetailSerializer(estudiantes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
 
 
 class NotasViewSet(viewsets.ModelViewSet):
