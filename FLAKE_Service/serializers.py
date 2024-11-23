@@ -33,12 +33,6 @@ class EstudianteCreateSerializer(serializers.ModelSerializer):
         model = Estudiante
         fields = '__all__'
 
-class EstudianteDetailSerializer(serializers.ModelSerializer):
-    persona = PersonaSerializer()
-
-    class Meta:
-        model = Estudiante
-        fields = '__all__'
 
 
 
@@ -116,6 +110,16 @@ class InstitucionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instituciones
         fields = '__all__'
+        
+class EstudianteDetailSerializer(serializers.ModelSerializer):
+    persona = PersonaSerializer()
+    instituciones=InstitucionSerializer()
+    aula= AulaSerializer()
+
+    class Meta:
+        model = Estudiante
+        fields = '__all__'
+
 
 class AsistenciaSerializer(serializers.ModelSerializer):
     class Meta:
