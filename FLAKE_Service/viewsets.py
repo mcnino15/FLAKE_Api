@@ -427,11 +427,13 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 #NUEVOOOOOO    
 
+from datetime import datetime
+
 class HorarioViewSet(viewsets.ModelViewSet):
     queryset = horario.objects.all()
     serializer_class = HorarioSerializer
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='crear-horario-con-profesor')
     def crear_horario_con_profesor(self, request):
         data = request.data
         cedula_profesor = data.get("cedula")
@@ -445,16 +447,19 @@ class HorarioViewSet(viewsets.ModelViewSet):
 
         # Validar que exista una persona con la cédula proporcionada
         try:
-            tutor = Tutor.objects.get(persona__cedula=cedula_profesor)
-            
+            persona = Persona.objects.get(cedula=cedula_profesor)
+        except Persona.DoesNotExist:
+            return Response({"error": "No existe una persona con esa cédula."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Validar que el tutor exista para esa persona
+        try:
+            tutor = Tutor.objects.get(persona=persona)
         except Tutor.DoesNotExist:
             return Response({"error": "El tutor con esta cédula no existe."}, status=status.HTTP_404_NOT_FOUND)
-        except Tutor.DoesNotExist:
-            return Response({"error": "El profesor no tiene un perfil de tutor."}, status=status.HTTP_404_NOT_FOUND)
 
         # Validar que el aula exista
         try:
-            aula = Aula.objects.get(id=aula_id)
+            aula = Aula.objects.get(idaula=aula_id)
         except Aula.DoesNotExist:
             return Response({"error": "El aula especificada no existe."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -465,9 +470,13 @@ class HorarioViewSet(viewsets.ModelViewSet):
         except ValueError:
             return Response({"error": "El formato de la hora es inválido. Usa 'HH:MM'."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validar que la hora de inicio sea antes de la hora de fin
+        if hora_inicio >= hora_fin:
+            return Response({"error": "La hora de inicio debe ser antes de la hora de fin."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Validar que el horario no se solape con uno existente
         horarios_existentes = horario.objects.filter(
-            profesor=profesor,
+            profesor=tutor,
             diainicial=dia_inicial,
             hora_inicio__lt=hora_fin,
             hora_fin__gt=hora_inicio
@@ -477,8 +486,8 @@ class HorarioViewSet(viewsets.ModelViewSet):
 
         # Crear el horario
         horario_data = {
-            "profesor": profesor.idtutor,
-            "aula": aula.id,
+            "profesor": tutor.idtutor,
+            "aula": aula.idaula,
             "fechainicio": fecha_inicio,
             "fechafin": fecha_final,
             "hora_inicio": hora_inicio,
