@@ -426,6 +426,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 #NUEVOOOOOO    
+
 class HorarioViewSet(viewsets.ModelViewSet):
     queryset = horario.objects.all()
     serializer_class = HorarioSerializer
@@ -433,46 +434,68 @@ class HorarioViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def crear_horario_con_profesor(self, request):
         data = request.data
-        profesor_id = data.get("profesor")
-        fecha_inicio=data.get("fechainicio")
-        fecha_final=data.get("fechafin")
-        hora_inicio_str = data.get("hora_inicio")  
-        hora_fin_str = data.get("hora_fin") 
-        dia_inicial = data.get("diainicial") 
-        dia_inicial_text = data.get("diainicial_text") 
-        
+        cedula_profesor = data.get("cedula")
+        fecha_inicio = data.get("fechainicio")
+        fecha_final = data.get("fechafin")
+        hora_inicio_str = data.get("hora_inicio")
+        hora_fin_str = data.get("hora_fin")
+        dia_inicial = data.get("diainicial")
+        dia_inicial_text = data.get("diainicial_text")
+        aula_id = data.get("aula")
 
+        # Validar que exista una persona con la cédula proporcionada
         try:
-            profesor = Tutor.objects.get(idtutor=profesor_id)  
+            tutor = Tutor.objects.get(persona__cedula=cedula_profesor)
+            
         except Tutor.DoesNotExist:
-            return Response({"error": "El profesor no existe."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "El tutor con esta cédula no existe."}, status=status.HTTP_404_NOT_FOUND)
+        except Tutor.DoesNotExist:
+            return Response({"error": "El profesor no tiene un perfil de tutor."}, status=status.HTTP_404_NOT_FOUND)
 
-        
+        # Validar que el aula exista
+        try:
+            aula = Aula.objects.get(id=aula_id)
+        except Aula.DoesNotExist:
+            return Response({"error": "El aula especificada no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validar el formato de las horas
         try:
             hora_inicio = datetime.strptime(hora_inicio_str, '%H:%M').time()
             hora_fin = datetime.strptime(hora_fin_str, '%H:%M').time()
         except ValueError:
             return Response({"error": "El formato de la hora es inválido. Usa 'HH:MM'."}, status=status.HTTP_400_BAD_REQUEST)
 
-
+        # Validar que el horario no se solape con uno existente
         horarios_existentes = horario.objects.filter(
             profesor=profesor,
-            hora_inicio__lt=hora_fin,  
-            hora_fin__gt=hora_inicio  
+            diainicial=dia_inicial,
+            hora_inicio__lt=hora_fin,
+            hora_fin__gt=hora_inicio
         )
-
         if horarios_existentes.exists():
-            return Response(
-                {"error": "El profesor ya tiene una clase en esta franja horaria."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "El horario se cruza con otro existente para este tutor."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(data=data)
+        # Crear el horario
+        horario_data = {
+            "profesor": profesor.idtutor,
+            "aula": aula.id,
+            "fechainicio": fecha_inicio,
+            "fechafin": fecha_final,
+            "hora_inicio": hora_inicio,
+            "hora_fin": hora_fin,
+            "diainicial": dia_inicial,
+            "diainicial_text": dia_inicial_text
+        }
+
+        serializer = HorarioSerializer(data=horario_data)
         if serializer.is_valid():
-            serializer.save(profesor=profesor)
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 #NUEVOOO
 class AulaViewSet(viewsets.ModelViewSet):
     queryset = Aula.objects.all()

@@ -180,7 +180,7 @@ class horario(models.Model):
     diainicial = models.CharField(max_length=2)  
     diainicial_text = models.CharField()  
     aula = models.ForeignKey(Aula, on_delete=models.CASCADE) 
-    profesor = models.ForeignKey(Tutor, on_delete=models.CASCADE) 
+    profesor=models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return f"{self.profesor} - {self.diainicial} to {self.diafinal} - {self.hora_inicio} to {self.hora_fin}"
