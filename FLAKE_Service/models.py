@@ -156,6 +156,7 @@ class asistencia(models.Model):
     tutor=models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True)
     estudiante=models.ForeignKey(Estudiante, on_delete=models.SET_NULL, null=True)
     aula = models.ForeignKey(Aula, on_delete=models.SET_NULL, null=True, blank=True)
+    profesor_asistencia = models.BooleanField(default=False) # Campo para la asistencia del profesor
     
     def __str__(self):
         return f"{self.estudiante} - {self.fechaclase} - {self.get_estado_display()}"

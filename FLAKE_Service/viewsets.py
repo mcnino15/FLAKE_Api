@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas
-from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
+from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,TutorAsistenciaSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
@@ -582,23 +582,42 @@ class AsistenciaTutorViewSet(viewsets.ModelViewSet):
             type=openapi.TYPE_OBJECT,
             properties={
                 'fechaclase': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Fecha de la clase'),
-                'tutor_asistencia': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Asistencia del profesor (true para presente, false para ausente)'),
+                'profesor_asistencia': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Asistencia del profesor (true para presente, false para ausente)'),
+                'aula_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del aula'),
+                'profesor_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del profesor'),
             },
-            required=['fechaclase', 'tutor_asistencia']
+            required=['fechaclase', 'profesor_asistencia', 'aula_id', 'profesor_id']
         ),
-        responses={200: 'Asistencia del tutor registrada exitosamente', 400: 'Bad Request'}
+        responses={200: 'Asistencia del profesor registrada exitosamente', 400: 'Bad Request'}
     )
     @action(detail=False, methods=['post'], url_path='tomar-asistencia-profesor')
     def tomar_asistencia_profesor(self, request):
         fechaclase = request.data.get('fechaclase')
-        tutor_asistencia = request.data.get('tutor_asistencia')
-        tutor= request.data.get('tutor')
+        profesor_asistencia = request.data.get('profesor_asistencia')
+        aula_id = request.data.get('aula_id')
+        profesor_id = request.data.get('profesor_id')
+
+        # Obtener la instancia de Aula y Tutor
+        try:
+            aula = Aula.objects.get(idaula=aula_id)
+        except Aula.DoesNotExist:
+            return Response({'error': 'Aula no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            profesor = Tutor.objects.get(idtutor=profesor_id)
+        except Tutor.DoesNotExist:
+            return Response({'error': 'Profesor no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Registrar o actualizar la asistencia del profesor
         asistencia_obj, created = asistencia.objects.update_or_create(
             fechaclase=fechaclase,
-            tutor=tutor,
+            aula=aula,
+            tutor=profesor,
             defaults={
-                'profesor_asistencia': tutor_asistencia,
+                'profesor_asistencia': profesor_asistencia,
             }
         )
+
         serializer = TutorAsistenciaSerializer(asistencia_obj)
         return Response(serializer.data, status=status.HTTP_200_OK)
+

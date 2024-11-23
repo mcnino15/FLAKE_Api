@@ -133,7 +133,8 @@ class fullnameEstudianteSerializer(serializers.ModelSerializer):
 class TutorAsistenciaSerializer(serializers.ModelSerializer):
     class Meta:
         model = asistencia
-        fields=['fechaclase', 'profesor_asistencia']
+        fields = '__all__'
+
         
 class NotasSerializer(serializers.ModelSerializer):
     # Incluye información adicional si necesitas mostrar datos de relaciones
