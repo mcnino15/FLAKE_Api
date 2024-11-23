@@ -2,8 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas
-from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,TutorAsistenciaSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
+from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas,AsistenciaTutor
+from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,AsistenciaTutorSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
@@ -582,53 +582,49 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
 
         return Response({'mensaje': 'Asistencias registradas exitosamente.'}, status=status.HTTP_200_OK)
 
-  
+
 class AsistenciaTutorViewSet(viewsets.ModelViewSet):
-    queryset = asistencia.objects.all()
-    serializer_class = TutorAsistenciaSerializer
+    queryset = AsistenciaTutor.objects.all()
+    serializer_class = AsistenciaTutorSerializer
 
-    @swagger_auto_schema(
-        method='post',
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'fechaclase': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Fecha de la clase'),
-                'profesor_asistencia': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Asistencia del profesor (true para presente, false para ausente)'),
-                'aula_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del aula'),
-                'profesor_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID del profesor'),
-            },
-            required=['fechaclase', 'profesor_asistencia', 'aula_id', 'profesor_id']
-        ),
-        responses={200: 'Asistencia del profesor registrada exitosamente', 400: 'Bad Request'}
-    )
-    @action(detail=False, methods=['post'], url_path='tomar-asistencia-profesor')
-    def tomar_asistencia_profesor(self, request):
-        fechaclase = request.data.get('fechaclase')
-        profesor_asistencia = request.data.get('profesor_asistencia')
-        aula_id = request.data.get('aula_id')
-        profesor_id = request.data.get('profesor_id')
+    @action(detail=False, methods=['post'], url_path='registrar')
+    def registrar_asistencia(self, request):
+        tutor_id = request.data.get('tutor')
+        aula_id = request.data.get('aula')
+        fecha_asistencia = request.data.get('fecha_asistencia')  # Formato YYYY-MM-DD
+        hora_inicio = request.data.get('hora_inicio')  # Formato HH:MM
 
-        # Obtener la instancia de Aula y Tutor
+        # Validar tutor
         try:
-            aula = Aula.objects.get(idaula=aula_id)
-        except Aula.DoesNotExist:
-            return Response({'error': 'Aula no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            profesor = Tutor.objects.get(idtutor=profesor_id)
+            tutor = Tutor.objects.get(idtutor=tutor_id)
         except Tutor.DoesNotExist:
-            return Response({'error': 'Profesor no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "El tutor no existe."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Registrar o actualizar la asistencia del profesor
-        asistencia_obj, created = asistencia.objects.update_or_create(
-            fechaclase=fechaclase,
-            aula=aula,
-            tutor=profesor,
-            defaults={
-                'profesor_asistencia': profesor_asistencia,
-            }
-        )
+        # Validar aula
+        try:
+            aula = Aula.objects.get(idaula=aula_id)  # Si Aula tiene un campo `id`
+        except Aula.DoesNotExist:
+            return Response({"error": "El aula no existe."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = TutorAsistenciaSerializer(asistencia_obj)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Validar fecha y hora
+        try:
+            fecha_asistencia = datetime.strptime(fecha_asistencia, '%Y-%m-%d').date()
+            hora_inicio = datetime.strptime(hora_inicio, '%H:%M').time()
+        except ValueError:
+            return Response({"error": "Formato de fecha u hora inválido. Usa 'YYYY-MM-DD' y 'HH:MM'."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
+        # Crear el registro de asistencia
+        asistencia_data = {
+            "tutor": tutor.idtutor,
+            "aula": aula.idaula,
+            "fecha_asistencia": fecha_asistencia,
+            "hora_inicio": hora_inicio,
+        }
+
+        serializer = AsistenciaTutorSerializer(data=asistencia_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

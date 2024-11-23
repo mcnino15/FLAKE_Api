@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.utils.timezone import now
 
 class Instituciones(models.Model):
     idinstitucion=models.AutoField(primary_key=True)
@@ -156,11 +157,20 @@ class asistencia(models.Model):
     tutor=models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True)
     estudiante=models.ForeignKey(Estudiante, on_delete=models.SET_NULL, null=True)
     aula = models.ForeignKey(Aula, on_delete=models.SET_NULL, null=True, blank=True)
-    profesor_asistencia = models.BooleanField(default=False) # Campo para la asistencia del profesor
+    
     
     def __str__(self):
         return f"{self.estudiante} - {self.fechaclase} - {self.get_estado_display()}"
 
+class AsistenciaTutor(models.Model):
+    tutor=models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True)
+    aula = models.ForeignKey(Aula, on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_asistencia = models.DateField(default=now)
+    hora_inicio = models.TimeField()
+    def __str__(self):
+        return f"Asistencia del tutor {self.tutor} en el aula {self.aula} el {self.fecha_asistencia}"
+    
+    
 class horario(models.Model):
     idhorario = models.AutoField(primary_key=True)
     fechainicio=models.CharField()
