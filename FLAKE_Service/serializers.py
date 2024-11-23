@@ -9,6 +9,7 @@ class AdminSerializer(serializers.ModelSerializer):
         model = Administrador
         fields = '__all__'
 class PersonaSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Persona
         fields = '__all__'

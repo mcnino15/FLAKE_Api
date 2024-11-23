@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas
 from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,TutorAsistenciaSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, TutorAsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
 from drf_yasg.utils import swagger_auto_schema
@@ -91,7 +92,13 @@ class TutorViewSet(viewsets.ModelViewSet):
         elif self.action in ['retrieve', 'get_tutor_por_persona', 'update', 'partial_update']:
             return TutorDetailSerializer
         return TutorCreateSerializer
-
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        persona = instance.persona
+        persona.delete()
+        
+        return super().destroy(request, *args, **kwargs)
+    
     @swagger_auto_schema(
         method='post',
         request_body=openapi.Schema(
@@ -163,7 +170,7 @@ class TutorViewSet(viewsets.ModelViewSet):
         }
         
         # Crear instancia de Tutor
-        tutor_serializer = TutorDetailSerializer(data=tutor_data)
+        tutor_serializer = TutorCreateSerializer(data=tutor_data)
         if tutor_serializer.is_valid():
             tutor_serializer.save()
             return Response(tutor_serializer.data, status=status.HTTP_201_CREATED)
@@ -403,7 +410,11 @@ class NotasViewSet(viewsets.ModelViewSet):
 class PersonaViewSet(viewsets.ModelViewSet):
     queryset = Persona.objects.all()
     serializer_class = PersonaSerializer
-
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        user = request.user
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
