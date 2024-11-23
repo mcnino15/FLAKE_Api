@@ -1,4 +1,4 @@
-from .models import Tutor ,Administrador, Persona, horario, Aula, Instituciones, asistencia, Estudiante, Notas
+from .models import Tutor ,Administrador, Persona, horario, Aula, Instituciones, asistencia, Estudiante, Notas,AsistenciaTutor
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
@@ -122,6 +122,10 @@ class AsistenciaSerializer(serializers.ModelSerializer):
         model = asistencia
         fields = '__all__'
 
+class AsistenciaTutorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AsistenciaTutor
+        fields = ['id', 'tutor', 'aula', 'fecha_asistencia', 'hora_inicio']
 
 class fullnameEstudianteSerializer(serializers.ModelSerializer):
     nombre_completo = serializers.SerializerMethodField()
@@ -131,10 +135,7 @@ class fullnameEstudianteSerializer(serializers.ModelSerializer):
     def get_nombre_completo(self,obj):
         return f"{obj.primer_nombre} {obj.segundo_nombre or ''} {obj.primer_apellido} {obj.segundo_apellido or ''}".strip()
     
-class TutorAsistenciaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = asistencia
-        fields = '__all__'
+
 
         
 class NotasSerializer(serializers.ModelSerializer):
