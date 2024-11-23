@@ -91,7 +91,13 @@ class TutorViewSet(viewsets.ModelViewSet):
         elif self.action in ['retrieve', 'get_tutor_por_persona', 'update', 'partial_update']:
             return TutorDetailSerializer
         return TutorCreateSerializer
-
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        persona = instance.persona
+        persona.delete()
+        
+        return super().destroy(request, *args, **kwargs)
+    
     @swagger_auto_schema(
         method='post',
         request_body=openapi.Schema(
@@ -163,7 +169,7 @@ class TutorViewSet(viewsets.ModelViewSet):
         }
         
         # Crear instancia de Tutor
-        tutor_serializer = TutorDetailSerializer(data=tutor_data)
+        tutor_serializer = TutorCreateSerializer(data=tutor_data)
         if tutor_serializer.is_valid():
             tutor_serializer.save()
             return Response(tutor_serializer.data, status=status.HTTP_201_CREATED)
