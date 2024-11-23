@@ -316,7 +316,12 @@ class EstudianteViewSet(viewsets.ModelViewSet):
         except Estudiante.DoesNotExist:
             return Response({"error": "Estudiante no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-
+    @action(detail=False, methods=['get'], url_path='listar-estudiantes')
+    def listar_estudiantes(self, request):
+        estudiantes = Estudiante.objects.all()
+        serializer = EstudianteDetailSerializer(estudiantes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 
     @action(detail=False, methods=['get'], url_path='por-aula/(?P<aula_id>[^/.]+)')
     def estudiantes_por_aula(self, request, aula_id=None):
