@@ -119,6 +119,15 @@ class EstudianteDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Estudiante
         fields = '__all__'
+        
+class EstudianteUpdateSerializer(serializers.ModelSerializer):
+    persona = PersonaSerializer()
+    instituciones = serializers.PrimaryKeyRelatedField(queryset=Instituciones.objects.all())
+    aula = serializers.PrimaryKeyRelatedField(queryset=Aula.objects.all())
+
+    class Meta:
+        model = Estudiante
+        fields = '__all__'
 
 
 class AsistenciaSerializer(serializers.ModelSerializer):

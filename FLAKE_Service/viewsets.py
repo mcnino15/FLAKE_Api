@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Administrador, Persona, Tutor, horario, Aula, Instituciones, asistencia, Estudiante, Notas,AsistenciaTutor
-from .serializers import AdminSerializer, PersonaSerializer, TutorDetailSerializer,TutorCreateSerializer,AsistenciaTutorSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
+from .serializers import AdminSerializer, PersonaSerializer,EstudianteUpdateSerializer, TutorDetailSerializer,TutorCreateSerializer,AsistenciaTutorSerializer,EstudianteCreateSerializer, EstudianteDetailSerializer,HorarioSerializer, AulaSerializer, InstitucionSerializer, AsistenciaSerializer, fullnameEstudianteSerializer,NotasSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
@@ -331,8 +331,41 @@ class EstudianteViewSet(viewsets.ModelViewSet):
             return Response({"error": "Aula no encontrada"}, status=status.HTTP_404_NOT_FOUND)
         
         estudiantes = Estudiante.objects.filter(aula=aula)
-        serializer = EstudianteDetailSerializer(estudiantes, many=True)
+        serializer = EstudianteUpdateSerializer(estudiantes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @swagger_auto_schema(
+        request_body=EstudianteUpdateSerializer,
+        responses={200: EstudianteUpdateSerializer, 400: 'Bad Request'}
+    )
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        persona_data = request.data.pop('persona', None)
+        if persona_data:
+            persona_serializer = PersonaSerializer(instance.persona, data=persona_data, partial=partial)
+            if persona_serializer.is_valid():
+                persona_serializer.save()
+            else:
+                return Response(persona_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        request.data['persona'] = instance.persona.id
+
+        estudiante_serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if estudiante_serializer.is_valid():
+            estudiante_serializer.save()
+            return Response(estudiante_serializer.data)
+        return Response(estudiante_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        request_body=EstudianteUpdateSerializer,
+        responses={200: EstudianteUpdateSerializer, 400: 'Bad Request'}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
 
 
 
