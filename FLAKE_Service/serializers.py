@@ -40,62 +40,46 @@ class EstudianteCreateSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     cedula = serializers.CharField()
     password = serializers.CharField(write_only=True)
+   
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    username_field = 'cedula'
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Añadir información adicional al token
+        try:
+            if hasattr(user, 'tutor_profile'):
+                token['role'] = 'tutor'
+                token['idtutor'] = user.tutor_profile.idtutor
+            elif hasattr(user, 'admin_profile'):
+                token['role'] = 'administrador'
+                token['idadministrador'] = user.admin_profile.idadministrador
+            else:
+                token['role'] = 'unknown'
+        except Persona.DoesNotExist:
+            token['role'] = 'unknown'
+
+        return token
 
     def validate(self, attrs):
-        credentials = {self.username_field: attrs[self.username_field], 'password': attrs['password']}
-        self.user = authenticate(**credentials)
-
-        if not self.user or not self.user.is_active:
-            raise AuthenticationFailed('No active account found with the given credentials')
-
-        data = {}
-
+        data = super().validate(attrs)
         refresh = self.get_token(self.user)
-        data['refresh'] = str(refresh)
-        data['access'] = str(refresh.access_token)
-
-        # Agregar información adicional al token
-        data['user_type'] = self.get_user_type(self.user)
-
-        return data
-
-    def get_user_type(self, user):
-        if hasattr(user, 'administrador'):
-            return 'Administrador'
-        elif hasattr(user, 'tutor'):
-            return 'Tutor'
-        else:
-            return 'Unknown'
-
-    def validate(self, attrs):
-        credentials = {self.username_field: attrs[self.username_field], 'password': attrs['password']}
-        self.user = authenticate(**credentials)
-
-        if not self.user or not self.user.is_active:
-            raise AuthenticationFailed('No active account found with the given credentials')
-
-        data = {}
-
-        refresh = self.get_token(self.user)
-        data['refresh'] = str(refresh)
-        data['access'] = str(refresh.access_token)
-
-        # Agregar información adicional al token
-        data['user_type'] = self.get_user_type(self.user)
-
-        return data
-
-    def get_user_type(self, user):
-        if hasattr(user, 'administrador'):
-            return 'Administrador'
-        elif hasattr(user, 'tutor'):
-            return 'Tutor'
-        else:
-            return 'Unknown'
         
+        data['refresh'] = str(refresh)
+        data['access'] = str(refresh.access_token)
+        data['role'] = refresh['role']
+        
+        if 'idtutor' in refresh:
+            data['idtutor'] = refresh['idtutor']
+        if 'idadministrador' in refresh:
+            data['idadministrador'] = refresh['idadministrador']
+        
+        return data
+
+
+
 class HorarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = horario
